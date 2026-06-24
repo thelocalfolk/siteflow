@@ -26,7 +26,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth')
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth') || pathname.startsWith('/setup')
   const isPendingRoute = pathname === '/pending'
 
   if (!user && !isAuthRoute) {
