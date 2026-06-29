@@ -1,9 +1,35 @@
-export default function ChatPage() {
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import ChatClient from './ChatClient'
+
+export default async function ChatPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, full_name, role, avatar_color')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) redirect('/login')
+
+  // Load last 50 messages with sender profile + reactions
+  const { data: messages } = await supabase
+    .from('messages')
+    .select(`
+      id, body, photo_url, created_at,
+      sender:profiles!sender_id(id, full_name, avatar_color),
+      reactions(id, emoji, user_id)
+    `)
+    .order('created_at', { ascending: true })
+    .limit(50)
+
   return (
-    <div className="flex flex-col h-full items-center justify-center text-center px-6 text-gray-400">
-      <div className="text-4xl mb-3">💬</div>
-      <p className="font-medium text-gray-600">Chat coming in Phase 4</p>
-      <p className="text-sm mt-1">Real-time group chat with message-to-task</p>
-    </div>
+    <ChatClient
+      initialMessages={messages ?? []}
+      currentUser={{ id: profile.id, full_name: profile.full_name, avatar_color: profile.avatar_color, role: profile.role }}
+    />
   )
 }
