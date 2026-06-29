@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
@@ -37,7 +38,9 @@ export default function ChatClient({
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
+  const [actionTarget, setActionTarget] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const router = useRouter()
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -150,6 +153,21 @@ export default function ChatClient({
     setUploading(false)
   }
 
+  function makeTask(msg: Message) {
+    setActionTarget(null)
+    const body = msg.body ?? ''
+    // Cheap heuristics: extract location (level N / L2) and time
+    const locationMatch = body.match(/\b(level\s*\d+|L\d+|ground floor|basement|roof)\b/i)
+    const timeMatch = body.match(/\b(at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}(?::\d{2})?\s*(?:am|pm))\b/i)
+    const params = new URLSearchParams({
+      message_id: msg.id,
+      title: body.slice(0, 80),
+      ...(locationMatch ? { location: locationMatch[0] } : {}),
+      ...(timeMatch ? { due: timeMatch[0] } : {}),
+    })
+    router.push(`/tasks/new?${params.toString()}`)
+  }
+
   function groupedReactions(reactions: Reaction[]) {
     const map: Record<string, { count: number; mine: boolean }> = {}
     reactions.forEach(r => {
@@ -212,7 +230,10 @@ export default function ChatClient({
                       ? 'bg-blue-600 text-white rounded-tr-sm'
                       : 'bg-white border border-gray-100 text-gray-900 rounded-tl-sm'
                   }`}
-                  onClick={() => setReactionTarget(reactionTarget === msg.id ? null : msg.id)}
+                  onClick={() => {
+                    setReactionTarget(null)
+                    setActionTarget(actionTarget === msg.id ? null : msg.id)
+                  }}
                 >
                   {msg.photo_url && (
                     <Image
@@ -229,18 +250,28 @@ export default function ChatClient({
                   </p>
                 </div>
 
-                {/* Reaction picker */}
-                {reactionTarget === msg.id && (
-                  <div className="flex gap-1 bg-white border border-gray-200 rounded-full px-2 py-1 shadow-lg">
-                    {EMOJIS.map(e => (
+                {/* Action sheet */}
+                {actionTarget === msg.id && (
+                  <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+                    <div className="flex gap-1 px-2 py-2 border-b border-gray-100">
+                      {EMOJIS.map(e => (
+                        <button
+                          key={e}
+                          onClick={() => { toggleReaction(msg.id, e); setActionTarget(null) }}
+                          className="text-lg hover:scale-125 transition-transform"
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                    {msg.body && (currentUser.role === 'manager' || true) && (
                       <button
-                        key={e}
-                        onClick={() => toggleReaction(msg.id, e)}
-                        className="text-lg hover:scale-125 transition-transform"
+                        onClick={() => makeTask(msg)}
+                        className="w-full text-left text-sm px-4 py-2.5 text-blue-600 font-medium hover:bg-blue-50"
                       >
-                        {e}
+                        📋 Make this a task
                       </button>
-                    ))}
+                    )}
                   </div>
                 )}
 
