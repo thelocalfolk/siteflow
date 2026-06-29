@@ -6,13 +6,21 @@ import Image from 'next/image'
 
 type Reaction = { id: string; emoji: string; user_id: string }
 type Sender = { id: string; full_name: string; avatar_color: string }
-type Message = {
+type RawMessage = {
   id: string
   body: string | null
   photo_url: string | null
   created_at: string
-  sender: Sender
+  sender: Sender | Sender[]
   reactions: Reaction[]
+}
+type Message = Omit<RawMessage, 'sender'> & { sender: Sender }
+
+function normalise(raw: RawMessage): Message {
+  return {
+    ...raw,
+    sender: Array.isArray(raw.sender) ? raw.sender[0] : raw.sender,
+  }
 }
 type CurrentUser = { id: string; full_name: string; avatar_color: string; role: string }
 
@@ -22,10 +30,10 @@ export default function ChatClient({
   initialMessages,
   currentUser,
 }: {
-  initialMessages: Message[]
+  initialMessages: RawMessage[]
   currentUser: CurrentUser
 }) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [messages, setMessages] = useState<Message[]>(initialMessages.map(normalise))
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
@@ -57,7 +65,7 @@ export default function ChatClient({
             `)
             .eq('id', payload.new.id)
             .single()
-          if (data) setMessages(prev => [...prev, data as Message])
+          if (data) setMessages(prev => [...prev, normalise(data as RawMessage)])
         }
       )
       .on(
