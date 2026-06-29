@@ -26,16 +26,20 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth') || pathname.startsWith('/setup')
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth')
+  const isSetupRoute = pathname.startsWith('/setup')
   const isPendingRoute = pathname === '/pending'
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isSetupRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   if (user) {
+    // /setup is always accessible to signed-in users regardless of status
+    if (isSetupRoute) return supabaseResponse
+
     if (isAuthRoute) {
       // Check profile status to redirect appropriately
       const { data: profile } = await supabase
