@@ -27,9 +27,15 @@ export default async function PendingPage() {
           <ol className="text-left space-y-1 list-decimal list-inside">
             <li>A manager reviews your sign-up</li>
             <li>They approve you in the app</li>
-            <li>You'll get access instantly</li>
+            <li>Come back here and sign in — you'll have full access</li>
           </ol>
         </div>
+        <a
+          href="/login"
+          className="block w-full bg-blue-600 text-white font-semibold py-3 rounded-xl text-sm text-center"
+        >
+          Sign in
+        </a>
         <form action="/auth/sign-out" method="post">
           <button type="submit" className="text-sm text-gray-400 underline">Sign out</button>
         </form>
