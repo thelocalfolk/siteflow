@@ -94,11 +94,20 @@ export default function ChatClient({
   async function sendMessage() {
     if (!body.trim()) return
     setSending(true)
-    await supabase.from('messages').insert({
-      sender_id: currentUser.id,
-      body: body.trim(),
-    })
+    const trimmed = body.trim()
     setBody('')
+    const { data } = await supabase
+      .from('messages')
+      .insert({ sender_id: currentUser.id, body: trimmed })
+      .select('id, body, photo_url, created_at')
+      .single()
+    if (data) {
+      setMessages(prev => [...prev, {
+        ...data,
+        sender: { id: currentUser.id, full_name: currentUser.full_name, avatar_color: currentUser.avatar_color },
+        reactions: [],
+      }])
+    }
     setSending(false)
   }
 
@@ -126,10 +135,18 @@ export default function ChatClient({
     const { error } = await supabase.storage.from('photos').upload(path, file, { upsert: true })
     if (error) { setUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(path)
-    await supabase.from('messages').insert({
-      sender_id: currentUser.id,
-      photo_url: publicUrl,
-    })
+    const { data } = await supabase
+      .from('messages')
+      .insert({ sender_id: currentUser.id, photo_url: publicUrl })
+      .select('id, body, photo_url, created_at')
+      .single()
+    if (data) {
+      setMessages(prev => [...prev, {
+        ...data,
+        sender: { id: currentUser.id, full_name: currentUser.full_name, avatar_color: currentUser.avatar_color },
+        reactions: [],
+      }])
+    }
     setUploading(false)
   }
 
